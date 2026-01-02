@@ -98,4 +98,4 @@ Same as above, plus cleans:
 
 ---
 
-*Last updated: $(date)*
+*Last updated: 1/2/2026*
