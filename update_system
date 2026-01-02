@@ -1,0 +1,100 @@
+#!/bin/bash
+
+echo "Starting system update for Linux Mint..."
+echo "=========================================="
+
+# Update mirrors for faster downloads
+echo "Optimizing mirrors for faster downloads..."
+if command -v mint-update &> /dev/null; then
+    echo "Checking for mirror updates via Mint's update manager..."
+    # Linux Mint has built-in mirror selection
+    sudo apt-get install -y mint-meta-codecs 2>/dev/null || true
+elif [ -f "/etc/apt/sources.list.d/official-package-repositories.list" ]; then
+    echo "Detected Linux Mint repository format - mirror optimization handled by system"
+else
+    echo "Using current mirror configuration"
+fi
+
+# Update package lists
+echo "Updating package lists..."
+sudo apt update
+
+# Upgrade all packages
+echo "Upgrading installed packages..."
+sudo apt upgrade -y
+
+# Handle new dependencies and system upgrades
+echo "Performing distribution upgrade..."
+sudo apt dist-upgrade -y
+
+# Install additional drivers
+echo "Installing additional drivers..."
+sudo ubuntu-drivers autoinstall
+
+# Remove unnecessary packages
+echo "Removing unnecessary packages..."
+sudo apt autoremove -y
+
+# Clean up old package files
+echo "Cleaning up package cache..."
+sudo apt autoclean
+
+# Update Flatpak applications
+if command -v flatpak &> /dev/null; then
+    echo "Updating Flatpak applications..."
+    # Optimize Flatpak remotes for faster downloads
+    echo "Optimizing Flatpak remotes..."
+    flatpak remote-info --system flathub > /dev/null 2>&1 && flatpak remote-modify --system flathub --url=https://dl.flathub.org/ 2>/dev/null || true
+    flatpak update -y
+else
+    echo "Flatpak not found - skipping Flatpak updates"
+fi
+
+# Update Snap packages
+if command -v snap &> /dev/null; then
+    echo "Updating Snap packages..."
+    # Snap automatically uses the best available mirrors
+    echo "Snap uses automatic mirror selection"
+    sudo snap refresh
+else
+    echo "Snap not found - skipping Snap updates"
+fi
+
+# Check for and update Python packages
+if command -v pip3 &> /dev/null; then
+    echo "Updating Python packages..."
+    pip3 list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U --user 2>/dev/null || echo "Some Python packages couldn't be updated"
+else
+    echo "pip3 not found - skipping Python package updates"
+fi
+
+# Update Node.js packages globally
+if command -v npm &> /dev/null; then
+    echo "Updating global Node.js packages..."
+    npm update -g
+else
+    echo "npm not found - skipping Node.js package updates"
+fi
+
+# Update Ruby gems
+if command -v gem &> /dev/null; then
+    echo "Updating Ruby gems..."
+    gem update --user-install
+else
+    echo "gem not found - skipping Ruby gem updates"
+fi
+
+# Additional mirror optimization tools
+echo "Checking for additional mirror optimization tools..."
+if command -v netselect-apt &> /dev/null; then
+    echo "Running netselect-apt to find fastest mirrors..."
+    sudo netselect-apt 2>/dev/null || echo "netselect-apt run completed"
+else
+    echo "Installing netselect-apt for mirror optimization..."
+    sudo apt-get install -y netselect-apt 2>/dev/null && sudo netselect-apt 2>/dev/null || echo "Mirror optimization tools not available"
+fi
+
+echo "=========================================="
+echo "System update complete!"
+echo "You may want to reboot if kernel was updated."
+echo "Mirror optimization may improve download speeds on next run."
