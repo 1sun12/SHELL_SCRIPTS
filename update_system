@@ -1,100 +1,218 @@
 #!/bin/bash
 
-echo "Starting system update for Linux Mint..."
+# Color variables
+YELLOW='\e[33m'
+GREEN='\e[32m'
+RED='\e[31m'
+NC='\e[0m' # No Color
+
+# Parse command line flags
+CLEAN_FLAG=false
+while getopts "c" flag; do
+    case "${flag}" in
+        c) CLEAN_FLAG=true ;;
+        *) echo -e "${RED}Usage: $0 [-c]${NC}"; echo "  -c: Clean caches and temporary files"; exit 1 ;;
+    esac
+done
+
+echo -e "${YELLOW}Starting system update for Linux Mint...${NC}"
 echo "=========================================="
 
 # Update mirrors for faster downloads
-echo "Optimizing mirrors for faster downloads..."
+echo -e "${YELLOW}Optimizing mirrors for faster downloads...${NC}"
 if command -v mint-update &> /dev/null; then
-    echo "Checking for mirror updates via Mint's update manager..."
+    echo -e "${GREEN}Checking for mirror updates via Mint's update manager...${NC}"
     # Linux Mint has built-in mirror selection
     sudo apt-get install -y mint-meta-codecs 2>/dev/null || true
 elif [ -f "/etc/apt/sources.list.d/official-package-repositories.list" ]; then
-    echo "Detected Linux Mint repository format - mirror optimization handled by system"
+    echo -e "${GREEN}Detected Linux Mint repository format - mirror optimization handled by system${NC}"
 else
-    echo "Using current mirror configuration"
+    echo -e "${YELLOW}Using current mirror configuration${NC}"
+fi
+
+# Update timezone information
+echo -e "${YELLOW}Updating timezone information...${NC}"
+if sudo timedatectl set-ntp true 2>/dev/null; then
+    echo -e "${GREEN}Timezone synchronization enabled${NC}"
+else
+    echo -e "${RED}Timezone update failed${NC}"
+fi
+echo -e "${YELLOW}Forcing immediate time synchronization...${NC}"
+if sudo timedatectl --adjust-system-clock 2>/dev/null || sudo systemctl restart systemd-timesyncd 2>/dev/null; then
+    echo -e "${GREEN}Time synchronization completed${NC}"
+else
+    echo -e "${RED}Time synchronization failed${NC}"
 fi
 
 # Update package lists
-echo "Updating package lists..."
-sudo apt update
+echo -e "${YELLOW}Updating package lists...${NC}"
+if sudo apt update; then
+    echo -e "${GREEN}Package lists updated successfully${NC}"
+else
+    echo -e "${RED}Package list update failed${NC}"
+fi
 
 # Upgrade all packages
-echo "Upgrading installed packages..."
-sudo apt upgrade -y
+echo -e "${YELLOW}Upgrading installed packages...${NC}"
+if sudo apt upgrade -y; then
+    echo -e "${GREEN}Package upgrade completed successfully${NC}"
+else
+    echo -e "${RED}Package upgrade failed${NC}"
+fi
 
 # Handle new dependencies and system upgrades
-echo "Performing distribution upgrade..."
-sudo apt dist-upgrade -y
+echo -e "${YELLOW}Performing distribution upgrade...${NC}"
+if sudo apt dist-upgrade -y; then
+    echo -e "${GREEN}Distribution upgrade completed successfully${NC}"
+else
+    echo -e "${RED}Distribution upgrade failed${NC}"
+fi
 
 # Install additional drivers
-echo "Installing additional drivers..."
-sudo ubuntu-drivers autoinstall
+echo -e "${YELLOW}Installing additional drivers...${NC}"
+if sudo ubuntu-drivers autoinstall; then
+    echo -e "${GREEN}Driver installation completed successfully${NC}"
+else
+    echo -e "${RED}Driver installation failed${NC}"
+fi
 
 # Remove unnecessary packages
-echo "Removing unnecessary packages..."
-sudo apt autoremove -y
+echo -e "${YELLOW}Removing unnecessary packages...${NC}"
+if sudo apt autoremove -y; then
+    echo -e "${GREEN}Package removal completed successfully${NC}"
+else
+    echo -e "${RED}Package removal failed${NC}"
+fi
 
 # Clean up old package files
-echo "Cleaning up package cache..."
-sudo apt autoclean
+echo -e "${YELLOW}Cleaning up package cache...${NC}"
+if sudo apt autoclean; then
+    echo -e "${GREEN}Package cache cleaned successfully${NC}"
+else
+    echo -e "${RED}Package cache cleaning failed${NC}"
+fi
 
 # Update Flatpak applications
 if command -v flatpak &> /dev/null; then
-    echo "Updating Flatpak applications..."
+    echo -e "${YELLOW}Updating Flatpak applications...${NC}"
     # Optimize Flatpak remotes for faster downloads
-    echo "Optimizing Flatpak remotes..."
+    echo -e "${YELLOW}Optimizing Flatpak remotes...${NC}"
     flatpak remote-info --system flathub > /dev/null 2>&1 && flatpak remote-modify --system flathub --url=https://dl.flathub.org/ 2>/dev/null || true
-    flatpak update -y
+    if flatpak update -y; then
+        echo -e "${GREEN}Flatpak applications updated successfully${NC}"
+    else
+        echo -e "${RED}Flatpak update failed${NC}"
+    fi
 else
-    echo "Flatpak not found - skipping Flatpak updates"
+    echo -e "${RED}Flatpak not found - skipping Flatpak updates${NC}"
 fi
 
 # Update Snap packages
 if command -v snap &> /dev/null; then
-    echo "Updating Snap packages..."
+    echo -e "${YELLOW}Updating Snap packages...${NC}"
     # Snap automatically uses the best available mirrors
-    echo "Snap uses automatic mirror selection"
-    sudo snap refresh
+    echo -e "${GREEN}Snap uses automatic mirror selection${NC}"
+    if sudo snap refresh; then
+        echo -e "${GREEN}Snap packages updated successfully${NC}"
+    else
+        echo -e "${RED}Snap update failed${NC}"
+    fi
 else
-    echo "Snap not found - skipping Snap updates"
+    echo -e "${RED}Snap not found - skipping Snap updates${NC}"
 fi
 
 # Check for and update Python packages
 if command -v pip3 &> /dev/null; then
-    echo "Updating Python packages..."
-    pip3 list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U --user 2>/dev/null || echo "Some Python packages couldn't be updated"
+    echo -e "${YELLOW}Updating Python packages...${NC}"
+    if pip3 list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U --user 2>/dev/null; then
+        echo -e "${GREEN}Python packages updated successfully${NC}"
+    else
+        echo -e "${YELLOW}Some Python packages couldn't be updated${NC}"
+    fi
 else
-    echo "pip3 not found - skipping Python package updates"
+    echo -e "${RED}pip3 not found - skipping Python package updates${NC}"
 fi
 
 # Update Node.js packages globally
 if command -v npm &> /dev/null; then
-    echo "Updating global Node.js packages..."
-    npm update -g
+    echo -e "${YELLOW}Updating global Node.js packages...${NC}"
+    if npm update -g; then
+        echo -e "${GREEN}Node.js packages updated successfully${NC}"
+    else
+        echo -e "${RED}Node.js package update failed${NC}"
+    fi
 else
-    echo "npm not found - skipping Node.js package updates"
+    echo -e "${RED}npm not found - skipping Node.js package updates${NC}"
 fi
 
 # Update Ruby gems
 if command -v gem &> /dev/null; then
-    echo "Updating Ruby gems..."
-    gem update --user-install
+    echo -e "${YELLOW}Updating Ruby gems...${NC}"
+    if gem update --user-install; then
+        echo -e "${GREEN}Ruby gems updated successfully${NC}"
+    else
+        echo -e "${RED}Ruby gem update failed${NC}"
+    fi
 else
-    echo "gem not found - skipping Ruby gem updates"
+    echo -e "${RED}gem not found - skipping Ruby gem updates${NC}"
 fi
 
 # Additional mirror optimization tools
-echo "Checking for additional mirror optimization tools..."
+echo -e "${YELLOW}Checking for additional mirror optimization tools...${NC}"
 if command -v netselect-apt &> /dev/null; then
-    echo "Running netselect-apt to find fastest mirrors..."
-    sudo netselect-apt 2>/dev/null || echo "netselect-apt run completed"
+    echo -e "${YELLOW}Running netselect-apt to find fastest mirrors...${NC}"
+    if sudo netselect-apt 2>/dev/null; then
+        echo -e "${GREEN}Mirror optimization completed successfully${NC}"
+    else
+        echo -e "${YELLOW}netselect-apt run completed with some issues${NC}"
+    fi
 else
-    echo "Installing netselect-apt for mirror optimization..."
-    sudo apt-get install -y netselect-apt 2>/dev/null && sudo netselect-apt 2>/dev/null || echo "Mirror optimization tools not available"
+    echo -e "${YELLOW}Installing netselect-apt for mirror optimization...${NC}"
+    if sudo apt-get install -y netselect-apt 2>/dev/null && sudo netselect-apt 2>/dev/null; then
+        echo -e "${GREEN}Mirror optimization installed and completed successfully${NC}"
+    else
+        echo -e "${RED}Mirror optimization tools not available${NC}"
+    fi
+fi
+
+# Clean caches and temporary files if -c flag is used
+if [ "$CLEAN_FLAG" = true ]; then
+    echo "=========================================="
+    echo -e "${YELLOW}Cleaning caches and temporary files...${NC}"
+    
+    # Clear thumbnail cache and temporary files
+    echo -e "${YELLOW}Clearing thumbnail cache and temporary files...${NC}"
+    rm -rf ~/.cache/thumbnails/* 2>/dev/null || true
+    rm -rf /tmp/* 2>/dev/null || true
+    rm -rf ~/.local/share/Trash/files/* 2>/dev/null || true
+    
+    # Clean memory caches
+    echo -e "${YELLOW}Cleaning memory caches...${NC}"
+    if sudo sync && sudo sysctl vm.drop_caches=3 2>/dev/null; then
+        echo -e "${GREEN}Memory cache cleaned successfully${NC}"
+    else
+        echo -e "${RED}Memory cache cleaning failed${NC}"
+    fi
+    
+    # Clean browser caches and cookies
+    echo -e "${YELLOW}Cleaning browser caches and cookies...${NC}"
+    # Firefox
+    rm -rf ~/.cache/mozilla/firefox/* 2>/dev/null || true
+    rm -rf ~/.mozilla/firefox/*/cookies.sqlite* 2>/dev/null || true
+    # Chrome/Chromium
+    rm -rf ~/.cache/google-chrome/* 2>/dev/null || true
+    rm -rf ~/.config/google-chrome/Default/Cookies* 2>/dev/null || true
+    rm -rf ~/.cache/chromium/* 2>/dev/null || true
+    rm -rf ~/.config/chromium/Default/Cookies* 2>/dev/null || true
+    echo -e "${GREEN}Browser cache and cookie cleaning completed${NC}"
+    
+    echo -e "${GREEN}Cache cleaning complete!${NC}"
 fi
 
 echo "=========================================="
-echo "System update complete!"
+echo -e "${GREEN}System update complete!${NC}"
 echo "You may want to reboot if kernel was updated."
 echo "Mirror optimization may improve download speeds on next run."
+if [ "$CLEAN_FLAG" = true ]; then
+    echo -e "${GREEN}Cache cleaning was performed.${NC}"
+fi
